@@ -34,3 +34,6 @@ def single_file_run(
                                    parallel=parallel)
         cws_all_process(obj=cws_obj)
 
+
+if __name__ == '__main__':
+    pass

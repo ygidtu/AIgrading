@@ -1,8 +1,12 @@
+#!/usr/bin/env python3
+# -*- coding:utf-8 -*-
 import os
+
 import cv2
 import numpy as np
-from glob import glob
 from skimage.morphology import remove_small_objects
+from inference_slide.utils import class_colors
+
 
 def remove_small(mask_digit, m, n, j, num):
     bw = np.zeros((m, n), dtype=bool)
@@ -12,27 +16,26 @@ def remove_small(mask_digit, m, n, j, num):
     I[mask_post] = j
     return I
 
-#openCV: BGR
-class_colors = [(0, 0, 0), (0, 255, 0), (255, 0, 255), (0, 0, 128), (0, 255, 255), (0, 0, 255), (255, 0, 0)]
+
 def get_colored_segmentation_image(seg_arr, n_classes, colors=class_colors):
     output_height = seg_arr.shape[0]
     output_width = seg_arr.shape[1]
     seg_img = np.zeros((output_height, output_width, 3))
     for c in range(n_classes):
         seg_arr_c = seg_arr[:, :] == c
-        seg_img[:, :, 0] += ((seg_arr_c)*(colors[c][0])).astype('uint8')
-        seg_img[:, :, 1] += ((seg_arr_c)*(colors[c][1])).astype('uint8')
-        seg_img[:, :, 2] += ((seg_arr_c)*(colors[c][2])).astype('uint8')
+        seg_img[:, :, 0] += ((seg_arr_c) * (colors[c][0])).astype('uint8')
+        seg_img[:, :, 1] += ((seg_arr_c) * (colors[c][1])).astype('uint8')
+        seg_img[:, :, 2] += ((seg_arr_c) * (colors[c][2])).astype('uint8')
     return seg_img
 
-def ss1_final(cws_folder, ss1_dir, ss1_final_dir, nfile=0, file_pattern='*.ndpi'):
+
+def ss1_final(cws_file, ss1_dir, ss1_final_dir):
     if not os.path.exists(ss1_final_dir):
         os.makedirs(ss1_final_dir)
 
-    cws_files = sorted(glob(os.path.join(cws_folder, file_pattern)))
-    file_name = os.path.split(cws_files[nfile])[-1]
+    file_name = os.path.split(cws_file)[-1]
     print(file_name)
-    img = cv2.imread(os.path.join(ss1_dir, file_name+'_Ss1.png'))
+    img = cv2.imread(os.path.join(ss1_dir, file_name + '_Ss1.png'))
     img = np.float32(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     m, n, _ = img.shape
     mask_digit = np.zeros((m, n))
@@ -65,7 +68,8 @@ def ss1_final(cws_folder, ss1_dir, ss1_final_dir, nfile=0, file_pattern='*.ndpi'
         mask_post_digit = np.maximum(mask_post_digit, remove_small(mask_digit, m, n, 6, 1000))
 
     mask_post = get_colored_segmentation_image(mask_post_digit, 7, colors=class_colors)
-    cv2.imwrite(os.path.join(ss1_final_dir, file_name+'_Ss1.png'), mask_post)
+    cv2.imwrite(os.path.join(ss1_final_dir, file_name + '_Ss1.png'), mask_post)
 
 
-
+if __name__ == '__main__':
+    pass

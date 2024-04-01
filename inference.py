@@ -6,6 +6,8 @@ from argparse import ArgumentParser, ArgumentError
 from glob import glob
 from multiprocessing import Pool
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 from tqdm import tqdm
 
 from generating_tile.save_cws import single_file_run
@@ -24,11 +26,30 @@ parser.add_argument('-n', '--nfile', dest='nth_file', help='the n-th file', defa
 parser.add_argument('-j', '--n_jobs', help='the n-th processes to use', default=4, type=int)
 
 
+def find_files(path, pattern):
+    fs = []
+    for parent, _, files in os.walk(path):
+        for file in files:
+            if file.endswith(pattern):
+                fs.append(os.path.join(parent, file))
+    return fs
+
+
 def call(args):
     try:
         single_file_run(**args)
     except ZeroDivisionError:
         pass
+
+
+def inference_slide(args):
+    generate_gp(**args["gp"])
+
+    # step2: stich to ss1 level
+    ss1_stich(**args["stich"])
+
+    # step3: post-processing
+    ss1_final(**args["final"])
 
 
 def main():
@@ -43,17 +64,16 @@ def main():
     tiling_dir = os.path.join(output_dir, "cws_tiling")
     os.makedirs(tiling_dir, exist_ok=True)
 
-    final_output_dir = os.path.join(output_dir, "final")
-    os.makedirs(final_output_dir, exist_ok=True)
+    generated_gp = os.path.join(output_dir, "generated_gp")
+    os.makedirs(generated_gp, exist_ok=True)
 
-    ss1_dir = os.path.join(output_dir, "ss1")
-    os.makedirs(ss1_dir, exist_ok=True)
+    stich_dir = os.path.join(output_dir, "stich")
+    os.makedirs(stich_dir, exist_ok=True)
 
-    ss1_final_dir = os.path.join(output_dir, "ss1_final")
-    os.makedirs(ss1_final_dir, exist_ok=True)
+    final_dir = os.path.join(output_dir, "final")
+    os.makedirs(final_dir, exist_ok=True)
 
-    print("running tiles")
-    wsi = sorted(glob(os.path.join(args.data_dir, args.file_name_pattern)))
+    wsi = sorted(find_files(args.data_dir, args.file_name_pattern))
 
     cmds = []
     for wsi_i in wsi:
@@ -77,27 +97,27 @@ def main():
     with Pool(args.n_jobs) as p:
         list(tqdm(p.imap(call, cmds), total=len(cmds)))
 
-    ######step0: generate cws tiles from single-cell pipeline
-    ######step1: generate growth pattern for tiles
-    generate_gp(datapath=tiling_dir,
-                save_dir=final_output_dir,
-                file_pattern=args.file_name_pattern,
-                color_norm=args.color_norm, nfile=args.nth_file,
-                patch_size=768, patch_stride=192, nClass=7)
+    cws_files = sorted(glob(os.path.join(tiling_dir, "*")))
+    cmds = []
+    for cws_file in cws_files:
+        cmds.append({
+            "gp": {
+                "datapath": cws_file, "save_dir": generated_gp,
+                "color_norm": args.color_norm, "patch_size": 768,
+                "patch_stride": 192, "nClass": 7
+            },
+            "stich": {
+                "cws_file": cws_file, "annotated_dir": generated_gp,
+                "output_dir": stich_dir
+            },
+            "final": {
+                "cws_file": cws_file, "final_dir": final_dir,
+                "stich_dir": stich_dir
+            }
+        })
 
-    #######step2: stich to ss1 level
-    ss1_stich(cws_folder=tiling_dir,
-              annotated_dir=args.save_dir,
-              output_dir=ss1_dir,
-              nfile=args.nth_file,
-              file_pattern=args.file_name_pattern)
-
-    #######step3: post-processing
-    ss1_final(cws_folder=tiling_dir,
-              ss1_dir=ss1_dir,
-              ss1_final_dir=ss1_final_dir,
-              nfile=args.nth_file,
-              file_pattern=args.file_name_pattern)
+    with Pool(args.n_jobs) as p:
+        list(tqdm(p.imap_unordered(inference_slide, cmds), total=len(cmds)))
 
 
 if __name__ == '__main__':
