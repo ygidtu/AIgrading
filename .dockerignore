@@ -1,0 +1,16 @@
+Dockerfile
+.dockerignore
+
+.git/
+trainset/
+
+.idea/
+
+*.TIF
+*.tiff
+*.bak
+
+*.zip
+*.tar.gz
+*.png
+*.sh

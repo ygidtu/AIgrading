@@ -160,8 +160,8 @@ class Patches:
         stride_w = self.stride_w
         num_patches_img = self.num_patches_img
         assert num_patches_img == patches.shape[0], 'Number of Patches do not match'
-        image = np.zeros((img_h, img_w, patches.shape[3]), dtype=np.float)
-        sum_c = np.zeros((img_h, img_w, patches.shape[3]), dtype=np.float)
+        image = np.zeros((img_h, img_w, patches.shape[3]), dtype=np.float32)
+        sum_c = np.zeros((img_h, img_w, patches.shape[3]), dtype=np.float32)
         iter_tot = 0
         for h in range(int(math.ceil((img_h - img_patch_h) / stride_h + 1))):
             for w in range(int(math.ceil((img_w - img_patch_w) / stride_w + 1))):

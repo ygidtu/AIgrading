@@ -5,6 +5,9 @@ from glob import glob
 import cv2
 import re
 
+from tqdm import tqdm
+
+
 def ss1_stich(cws_folder, annotated_dir, output_dir, nfile=0, file_pattern='*.ndpi'):
     cws_files = sorted(glob(os.path.join(cws_folder, file_pattern)))
     if os.path.exists(output_dir) is False:
@@ -13,15 +16,8 @@ def ss1_stich(cws_folder, annotated_dir, output_dir, nfile=0, file_pattern='*.nd
     def natural_key(string_):
         return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
 
-    def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='='):  # chr(0x00A3)
-        percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-        filledLength = int(length * iteration / total)
-        bar = fill * filledLength + '>' + '.' * (length - filledLength)
-        print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end="")
-        if iteration == total:
-            print()
-
     wsi_name = os.path.split(cws_files[nfile])[-1]
+
     if os.path.exists(os.path.join(output_dir, wsi_name + "_Ss1.png")):
         print(wsi_name, 'exists')
         pass
@@ -42,9 +38,9 @@ def ss1_stich(cws_folder, annotated_dir, output_dir, nfile=0, file_pattern='*.nd
         annotated_dir_slide = os.path.join(annotated_dir, imagename)
         annotated_path = annotated_dir_slide
         images = sorted(glob(os.path.join(annotated_path, 'Da*')), key=natural_key)
-        printProgressBar(0, len(images), prefix='Progress:', suffix='Complete', length=50)
+
         i_count = 0
-        for ii in images:
+        for ii in tqdm(images):
             ii = os.path.basename(ii)
             i_count += 1
             cws_i = int(re.search(r'\d+', ii).group())
@@ -61,7 +57,7 @@ def ss1_stich(cws_folder, annotated_dir, output_dir, nfile=0, file_pattern='*.nd
             h_r = max(int(img.shape[0] * 0.0625), 1)
             img_r = cv2.resize(img, (w_r, h_r), interpolation=cv2.INTER_NEAREST)
             img_all[h_i: h_i + int(img_r.shape[0]), w_i: w_i + int(img_r.shape[1]), :] = img_r
-            printProgressBar(cws_i, len(images), prefix='Progress:', suffix='Completed for %s' % nfile, length=50)
+
             if i_count % 20 == 0 or i_count >= len(images):
                 cv2.imwrite(os.path.join(output_dir, imagename + "_Ss1.png"), img_all)
 

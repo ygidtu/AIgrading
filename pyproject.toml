@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "aigrading"
+version = "0.1.0"
+description = ""
+authors = ["ygidtu <ygidtu@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.12"
+numpy = "^1.26.4"
+tensorflow = "2.10"
+pandas = "^2.2.1"
+pillow = "^10.2.0"
+scipy = "^1.12.0"
+opencv-python = "^4.9.0.80"
+scikit-image = "^0.22.0"
+openslide-python = "^1.3.1"
+tqdm = "^4.66.2"
+
+[[tool.poetry.source]]
+name = "mirrors"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple/"
+priority = "primary"
+
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "supplemental"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

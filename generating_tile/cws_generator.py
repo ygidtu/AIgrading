@@ -9,6 +9,7 @@ import tifffile
 import warnings
 import multiprocessing
 
+
 class CWSGENERATOR:
 
     def __init__(self,
@@ -34,10 +35,12 @@ class CWSGENERATOR:
         self.openslide_obj = openslide.OpenSlide(filename=os.path.join(self.input_dir, self.file_name))
         self.parallel = parallel
 
-        if objective_power == 0:
+        if objective_power == 0 and openslide.PROPERTY_NAME_OBJECTIVE_POWER in self.openslide_obj.properties:
             self.objective_power = float(self.openslide_obj.properties[openslide.PROPERTY_NAME_OBJECTIVE_POWER])
-        else:
+        elif objective_power != 0:
             self.objective_power = objective_power
+        else:
+            self.objective_power = cws_objective_value
         
         if out_mpp is None:
             self.cws_objective_value = cws_objective_value
@@ -71,9 +74,6 @@ class CWSGENERATOR:
             
         if self.parallel:
             self.openslide_obj = None #Deactivate the main process object so it doesn't get sent to subprocesses
-        
-        if self.objective_power == 0:
-            self.objective_power = float(openslide_obj.properties[openslide.PROPERTY_NAME_OBJECTIVE_POWER])
 
         self.rescale = self.objective_power / self.cws_objective_value
         slide_dimension = openslide_obj.level_dimensions[0]
@@ -147,9 +147,6 @@ class CWSGENERATOR:
         output_dir = self.output_dir
         file_name = self.file_name
 
-        if self.objective_power == 0:
-            self.objective_power = float(openslide_obj.properties[openslide.PROPERTY_NAME_OBJECTIVE_POWER])
-
         _, file_type = os.path.splitext(file_name)
         rescale = self.objective_power / cws_objective_value
         slide_dimension = openslide_obj.level_dimensions[0]
@@ -207,8 +204,7 @@ class CWSGENERATOR:
 
     def param(self):
         exp_dir = self.output_dir
-        if self.objective_power == 0:
-            self.objective_power = float(self.openslide_obj.properties[openslide.PROPERTY_NAME_OBJECTIVE_POWER])
+
         objective_power = self.objective_power
         slide_dimension = self.openslide_obj.level_dimensions[0]
         cws_objective_value = self.cws_objective_value
@@ -228,8 +224,7 @@ class CWSGENERATOR:
 
     def final_scan_ini(self):
         cws_objective_value = self.cws_objective_value
-        if self.objective_power == 0:
-            self.objective_power = float(self.openslide_obj.properties[openslide.PROPERTY_NAME_OBJECTIVE_POWER])
+
         rescale = self.objective_power / cws_objective_value
         output_dir = self.output_dir
         openslide_obj = self.openslide_obj
@@ -331,8 +326,6 @@ class CWSGENERATOR:
         openslide_obj = self.openslide_obj
         cws_objective_value = self.cws_objective_value
         cws_read_size = self.cws_read_size
-        if self.objective_power == 0:
-            self.objective_power = float(openslide_obj.properties[openslide.PROPERTY_NAME_OBJECTIVE_POWER])
         rescale = self.objective_power / cws_objective_value
         openslide_read_size = np.multiply(cws_read_size, rescale)
 
