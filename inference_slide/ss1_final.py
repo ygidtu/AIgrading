@@ -29,13 +29,11 @@ def get_colored_segmentation_image(seg_arr, n_classes, colors=class_colors):
     return seg_img
 
 
-def ss1_final(cws_file, ss1_dir, ss1_final_dir):
-    if not os.path.exists(ss1_final_dir):
-        os.makedirs(ss1_final_dir)
+def ss1_final(cws_file, stich_dir, final_dir):
+    os.makedirs(final_dir, exist_ok=True)
 
     file_name = os.path.split(cws_file)[-1]
-    print(file_name)
-    img = cv2.imread(os.path.join(ss1_dir, file_name + '_Ss1.png'))
+    img = cv2.imread(os.path.join(stich_dir, file_name + '_Ss1.png'))
     img = np.float32(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     m, n, _ = img.shape
     mask_digit = np.zeros((m, n))
@@ -68,7 +66,7 @@ def ss1_final(cws_file, ss1_dir, ss1_final_dir):
         mask_post_digit = np.maximum(mask_post_digit, remove_small(mask_digit, m, n, 6, 1000))
 
     mask_post = get_colored_segmentation_image(mask_post_digit, 7, colors=class_colors)
-    cv2.imwrite(os.path.join(ss1_final_dir, file_name + '_Ss1.png'), mask_post)
+    cv2.imwrite(os.path.join(final_dir, file_name + '_Ss1.png'), mask_post)
 
 
 if __name__ == '__main__':

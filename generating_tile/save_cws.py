@@ -20,7 +20,7 @@ def single_file_run(
     # print(file_name, flush=True)
     _, file_type = os.path.splitext(file_name)
 
-    if file_type == '.svs' or file_type == '.ndpi' or file_type == '.mrxs':
+    if file_type in ['.svs', '.ndpi', '.mrxs', '.kfb']:
         cws_obj = cws.CWSGENERATOR(
             output_dir=output_dir, file_name=file_name, input_dir=input_dir,
             cws_objective_value=cws_objective_value, in_mpp=in_mpp,

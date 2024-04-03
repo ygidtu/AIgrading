@@ -215,7 +215,7 @@ class Patches:
         return image
 
 
-def generate_gp(datapath, save_dir, patch_size=768, patch_stride=192, nClass=7, color_norm=True):
+def generate_gp(datapath, save_dir, patch_size=768, patch_stride=192, nClass=7, color_norm=True, **kwargs):
     model = load_model(
         os.path.join(os.path.dirname(os.path.dirname(__file__)), 'models/AIgrading_anorak.h5'),
         custom_objects={'tf': tf}, compile=False

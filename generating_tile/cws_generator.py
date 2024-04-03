@@ -11,6 +11,8 @@ import tifffile
 import warnings
 import multiprocessing
 
+from generating_tile.kfb import TSlide
+
 
 class CWSGENERATOR:
 
@@ -19,7 +21,7 @@ class CWSGENERATOR:
                  file_name='Test_file.svs',
                  output_dir=os.path.join(os.getcwd(), 'cws'),
                  cws_objective_value=20,
-                 objective_power=0,
+                 objective_power=40,
                  cws_read_size_w=2000,
                  cws_read_size_h=2000,
                  in_mpp=None,
@@ -34,7 +36,11 @@ class CWSGENERATOR:
         if not os.path.isdir(self.output_dir):
             os.makedirs(self.output_dir)
         self.cws_read_size = np.array([cws_read_size_w, cws_read_size_h])
-        self.openslide_obj = openslide.OpenSlide(filename=os.path.join(self.input_dir, self.file_name))
+
+        if self.file_name.endswith(".kfb"):
+            self.openslide_obj = TSlide(filename=os.path.join(self.input_dir, self.file_name))
+        else:
+            self.openslide_obj = openslide.OpenSlide(filename=os.path.join(self.input_dir, self.file_name))
         self.parallel = parallel
 
         if objective_power == 0 and openslide.PROPERTY_NAME_OBJECTIVE_POWER in self.openslide_obj.properties:
@@ -69,8 +75,11 @@ class CWSGENERATOR:
     def generate_cws(self):
         def initialise_par(wsi_path):
             global openslide_obj
-            
-            openslide_obj = openslide.OpenSlide(filename=wsi_path)
+
+            if wsi_path.endswith(".kfb"):
+                openslide_obj = TSlide(filename=wsi_path)
+            else:
+                openslide_obj = openslide.OpenSlide(filename=wsi_path)
 
         openslide_obj = self.openslide_obj
             
@@ -171,9 +180,13 @@ class CWSGENERATOR:
             slide_dimension_ss1 = (slide_dimension_rescale / 16).astype(np.int32)
             scale_h = round(slide_dimension[0]) / 1024
             thumbnail_height = int(round(slide_dimension[1] / scale_h))
-            thumb = openslide_obj.get_thumbnail([1024, thumbnail_height])
+
+            img = openslide_obj.read_whole_image(0)
+            thumb = img.resize([1024, thumbnail_height])
+            # thumb = openslide_obj.get_thumbnail([1024, thumbnail_height])
             thumb.save(os.path.join(output_dir, 'SlideThumb.jpg'), format='JPEG')
-            thumb = openslide_obj.get_thumbnail(slide_dimension_ss1)
+            # thumb = openslide_obj.get_thumbnail(slide_dimension_ss1)
+            thumb = img.resize(slide_dimension_ss1)
             thumb.save(os.path.join(output_dir, 'Ss1.jpg'), format='JPEG')
 
     def create_thumb_from_tiles(self, thumb_size, out_tile_size):

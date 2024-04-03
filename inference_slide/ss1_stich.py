@@ -14,7 +14,6 @@ def ss1_stich(cws_file, annotated_dir, output_dir):
         os.makedirs(output_dir)
 
     def natural_key(string_):
-        print(string_)
         return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
 
     wsi_name = os.path.split(cws_file)[-1]
@@ -38,10 +37,8 @@ def ss1_stich(cws_file, annotated_dir, output_dir):
         annotated_path = annotated_dir_slide
         images = sorted(glob(os.path.join(annotated_path, 'Da*')), key=natural_key)
 
-        i_count = 0
         for ii in images:
             ii = os.path.basename(ii)
-            i_count += 1
             cws_i = int(re.search(r'\d+', ii).group())
             h_i_ori = int(np.floor(cws_i / divisor_w)) * cws_h
             w_i = int((cws_i - h_i_ori / cws_h * divisor_w)) * int(cws_w * 0.0625)
@@ -52,9 +49,7 @@ def ss1_stich(cws_file, annotated_dir, output_dir):
             h_r = max(int(img.shape[0] * 0.0625), 1)
             img_r = cv2.resize(img, (w_r, h_r), interpolation=cv2.INTER_NEAREST)
             img_all[h_i: h_i + int(img_r.shape[0]), w_i: w_i + int(img_r.shape[1]), :] = img_r
-
-            if i_count % 20 == 0 or i_count >= len(images):
-                cv2.imwrite(os.path.join(output_dir, imagename + "_Ss1.png"), img_all)
+            cv2.imwrite(os.path.join(output_dir, imagename + "_Ss1.png"), img_all)
 
 
 if __name__ == "__main__":
