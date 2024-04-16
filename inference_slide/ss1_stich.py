@@ -39,17 +39,20 @@ def ss1_stich(cws_file, annotated_dir, output_dir):
 
         for ii in images:
             ii = os.path.basename(ii)
-            cws_i = int(re.search(r'\d+', ii).group())
-            h_i_ori = int(np.floor(cws_i / divisor_w)) * cws_h
-            w_i = int((cws_i - h_i_ori / cws_h * divisor_w)) * int(cws_w * 0.0625)
-            h_i = int(np.floor(cws_i / divisor_w)) * int(cws_h * 0.0625)
-            img = cv2.imread(os.path.join(annotated_path, ii))
+            try:
+                cws_i = int(re.search(r'\d+', ii).group())
+                h_i_ori = int(np.floor(cws_i / divisor_w)) * cws_h
+                w_i = int((cws_i - h_i_ori / cws_h * divisor_w)) * int(cws_w * 0.0625)
+                h_i = int(np.floor(cws_i / divisor_w)) * int(cws_h * 0.0625)
+                img = cv2.imread(os.path.join(annotated_path, ii))
 
-            w_r = max(int(img.shape[1] * 0.0625), 1)
-            h_r = max(int(img.shape[0] * 0.0625), 1)
-            img_r = cv2.resize(img, (w_r, h_r), interpolation=cv2.INTER_NEAREST)
-            img_all[h_i: h_i + int(img_r.shape[0]), w_i: w_i + int(img_r.shape[1]), :] = img_r
-            cv2.imwrite(os.path.join(output_dir, imagename + "_Ss1.png"), img_all)
+                w_r = max(int(img.shape[1] * 0.0625), 1)
+                h_r = max(int(img.shape[0] * 0.0625), 1)
+                img_r = cv2.resize(img, (w_r, h_r), interpolation=cv2.INTER_NEAREST)
+                img_all[h_i: h_i + int(img_r.shape[0]), w_i: w_i + int(img_r.shape[1]), :] = img_r
+                cv2.imwrite(os.path.join(output_dir, imagename + "_Ss1.png"), img_all)
+            except AttributeError as err:
+                print(f"{ii} -> {err}")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,14 @@
 ## AI grading
 This repository is for the paper  "The artificial intelligence-based model ANORAK improves histopathological grading of lung adenocarcinoma" published in Nature Cancer. It could guide you to generate growth pattern masks with a well-trained deep learning model for semantic segmentation, from which the proportion of each growth pattern can be obtained, thereby replicating IASLC grading for lung adenocarcinoma.
 
+
+```bash
+poetry export -f requirements.txt --without-hashes --without-urls | awk -F "==" '{ print $1 }' > requirements.txt
+python ./training_patch/img2patch.py --image_path /path/to/training/image --label_path /path/to/training/mask --save_path /path/to/patches
+python ./training_patch/train_main.py --input_dir trainset/image --target_dir trainset/masks --img_size 384 --num_class 7 --batch_size 8 --num_epoch 60
+```
+
+
 ### Generating tiles for a whole slie image
 Dependencies for generating_tiles are in AIgraind/generating_tiles/requirements, following the step in the work of AbdulJabbar, K. et al. Geospatial immune variability illuminates differential evolution of lung adenocarcinoma. Nature Medicine (2020). doi: 10.1038/s41591-020-0900-x
 

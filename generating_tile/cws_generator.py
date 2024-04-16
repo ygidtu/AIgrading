@@ -4,14 +4,15 @@ import os
 import openslide
 import numpy as np
 import math
-from PIL import Image
+
 import pickle
 import scipy.io as sio
 import tifffile
 import warnings
 import multiprocessing
 
-from generating_tile.kfb import TSlide
+from kfb import TSlide
+from PIL import Image
 
 
 class CWSGENERATOR:
@@ -49,28 +50,31 @@ class CWSGENERATOR:
             self.objective_power = objective_power
         else:
             self.objective_power = cws_objective_value
-        
+
         if out_mpp is None:
             self.cws_objective_value = cws_objective_value
         elif in_mpp is None:
             _, file_type = os.path.splitext(self.file_name)
-            
+
             try:
                 if file_type == '.tif' or file_type == '.tiff' or file_type == '.qptiff':
                     with tifffile.TiffFile(os.path.join(self.input_dir, self.file_name)) as tif:
                         in_mpp = tif.pages[0].tags['XResolution'].value
-                        in_mpp = 10000*in_mpp[1]/in_mpp[0]
+                        in_mpp = 10000 * in_mpp[1] / in_mpp[0]
                 else:
                     in_mpp = float(self.openslide_obj.properties[openslide.PROPERTY_NAME_MPP_X])
             except:
-                warnings.warn("Warning: Automatic detection of file's scanning resolution failed. Resolution correction will not be applied to this image.")
-        
+                warnings.warn(
+                    "Warning: Automatic detection of file's scanning resolution failed. Resolution correction will not be applied to this image.")
+
             if in_mpp is None:
                 self.cws_objective_value = cws_objective_value
             else:
-                self.cws_objective_value = cws_objective_value*(self.objective_power/out_mpp_target_objective)*(in_mpp/out_mpp)
+                self.cws_objective_value = cws_objective_value * (self.objective_power / out_mpp_target_objective) * (
+                            in_mpp / out_mpp)
         else:
-            self.cws_objective_value = cws_objective_value*(self.objective_power/out_mpp_target_objective)*(in_mpp/out_mpp)
+            self.cws_objective_value = cws_objective_value * (self.objective_power / out_mpp_target_objective) * (
+                        in_mpp / out_mpp)
 
     def generate_cws(self):
         def initialise_par(wsi_path):
@@ -82,9 +86,9 @@ class CWSGENERATOR:
                 openslide_obj = openslide.OpenSlide(filename=wsi_path)
 
         openslide_obj = self.openslide_obj
-            
+
         if self.parallel:
-            self.openslide_obj = None #Deactivate the main process object so it doesn't get sent to subprocesses
+            self.openslide_obj = None  # Deactivate the main process object so it doesn't get sent to subprocesses
 
         self.rescale = self.objective_power / self.cws_objective_value
         slide_dimension = openslide_obj.level_dimensions[0]
@@ -98,29 +102,30 @@ class CWSGENERATOR:
 
         self.yTiles = int(math.ceil((self.slide_h - self.cws_h) / self.cws_h + 1))
         self.xTiles = int(math.ceil((self.slide_w - self.cws_w) / self.cws_w + 1))
-        self.nTiles = self.yTiles*self.xTiles
-        
+        self.nTiles = self.yTiles * self.xTiles
+
         if self.parallel:
-            with multiprocessing.Pool(processes=max(1, multiprocessing.cpu_count()-1), initializer=initialise_par, initargs=(os.path.join(self.input_dir, self.file_name),)) as pool:
+            with multiprocessing.Pool(processes=max(1, multiprocessing.cpu_count() - 1), initializer=initialise_par,
+                                      initargs=(os.path.join(self.input_dir, self.file_name),)) as pool:
                 pool.map(self.write_tile, range(self.nTiles))
-                
-            self.openslide_obj = openslide_obj #Reactivate the main process object
+
+            self.openslide_obj = openslide_obj  # Reactivate the main process object
         else:
             self.text_output = open(os.path.join(self.output_dir, 'Output.txt'), 'w')
-            
+
             for i in range(self.nTiles):
                 self.write_tile(i)
-                
+
             self.text_output.close()
             delattr(self, 'text_output')
-            
+
     def write_tile(self, i):
         if self.parallel:
             self.openslide_obj = openslide_obj
-    
-        h = i//self.xTiles
-        w = i%self.xTiles
-                
+
+        h = i // self.xTiles
+        w = i % self.xTiles
+
         start_h = int(round(h * self.cws_h))
         end_h = int(round((h * self.cws_h) + self.cws_h))
         start_w = int(round(w * self.cws_w))
@@ -166,8 +171,9 @@ class CWSGENERATOR:
             slide_dimension_rescale = np.round(np.array(slide_dimension) / rescale)
             slide_dimension_ss1 = (slide_dimension_rescale / 16).astype(np.int32)
             cws_read_size = np.array(self.cws_read_size)
-            cws_read_size_ss1 = np.round(cws_read_size/16).astype(np.int32)
-            slide_dimension_thumb = np.round(np.multiply(slide_dimension_rescale, np.divide(cws_read_size_ss1, cws_read_size))).astype(np.int32)
+            cws_read_size_ss1 = np.round(cws_read_size / 16).astype(np.int32)
+            slide_dimension_thumb = np.round(
+                np.multiply(slide_dimension_rescale, np.divide(cws_read_size_ss1, cws_read_size))).astype(np.int32)
             thumb = self.create_thumb_from_tiles(slide_dimension_thumb, cws_read_size_ss1)
             thumbSS1 = thumb.resize(size=slide_dimension_ss1, resample=Image.BICUBIC)
             thumbSS1.save(os.path.join(output_dir, 'Ss1.jpg'), format='JPEG')
@@ -181,12 +187,9 @@ class CWSGENERATOR:
             scale_h = round(slide_dimension[0]) / 1024
             thumbnail_height = int(round(slide_dimension[1] / scale_h))
 
-            img = openslide_obj.read_whole_image(0)
-            thumb = img.resize([1024, thumbnail_height])
-            # thumb = openslide_obj.get_thumbnail([1024, thumbnail_height])
+            thumb = openslide_obj.get_thumbnail([1024, thumbnail_height])
             thumb.save(os.path.join(output_dir, 'SlideThumb.jpg'), format='JPEG')
-            # thumb = openslide_obj.get_thumbnail(slide_dimension_ss1)
-            thumb = img.resize(slide_dimension_ss1)
+            thumb = openslide_obj.get_thumbnail(slide_dimension_ss1)
             thumb.save(os.path.join(output_dir, 'Ss1.jpg'), format='JPEG')
 
     def create_thumb_from_tiles(self, thumb_size, out_tile_size):
@@ -209,13 +212,12 @@ class CWSGENERATOR:
                     end_w = thumb_size[0]
 
                 im = Image.open(os.path.join(tile_dir, 'Da' + str(i) + '.jpg'))
-                im = im.resize(size=[end_w-start_w, end_h-start_h], resample=Image.BICUBIC)
+                im = im.resize(size=[end_w - start_w, end_h - start_h], resample=Image.BICUBIC)
                 thumb[start_h:end_h, start_w:end_w, :] = np.array(im)
-                    
+
                 i += 1
 
         return Image.fromarray(thumb)
-
 
     def param(self):
         exp_dir = self.output_dir
@@ -245,7 +247,7 @@ class CWSGENERATOR:
         openslide_obj = self.openslide_obj
         cws_read_size = self.cws_read_size
         slide_dimension = openslide_obj.level_dimensions[0]
-        slide_dimension = np.round(np.array(slide_dimension)/rescale)
+        slide_dimension = np.round(np.array(slide_dimension) / rescale)
         slide_dimension = slide_dimension.astype(np.int32)
         slide_h = slide_dimension[1]
         slide_w = slide_dimension[0]
@@ -310,14 +312,14 @@ class CWSGENERATOR:
         i = 0
         for h in range(int(math.ceil((slide_h - cws_h) / cws_h + 1))):
             for w in range(int(math.ceil((slide_w - cws_w) / cws_w + 1))):
-                x_text = ((slide_dimension[0] / 2)-(w*cws_w + cws_read_size[0]/2))*4
-                y_text = ((slide_dimension[1] / 2) - (h*cws_h + cws_read_size[1] / 2)) * 4
+                x_text = ((slide_dimension[0] / 2) - (w * cws_w + cws_read_size[0] / 2)) * 4
+                y_text = ((slide_dimension[1] / 2) - (h * cws_h + cws_read_size[1] / 2)) * 4
                 text_output.write('[Da%d]\n'
                                   'x=%d\n'
                                   'y=%d\n'
                                   'z=0\n' % (i, x_text, y_text))
                 i += 1
-        
+
         text_output.close()
 
     def clust_tile_sh(self):
