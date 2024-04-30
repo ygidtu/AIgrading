@@ -12,6 +12,7 @@ import warnings
 import multiprocessing
 
 from kfb import TSlide
+from loguru import logger
 from PIL import Image
 
 
@@ -28,7 +29,7 @@ class CWSGENERATOR:
                  in_mpp=None,
                  out_mpp=None,
                  out_mpp_target_objective=40,
-                 parallel=False):
+                 parallel=1):
         self.input_dir = input_dir
         self.file_name = os.path.basename(file_name)
         if not os.path.isdir(output_dir):
@@ -87,7 +88,7 @@ class CWSGENERATOR:
 
         openslide_obj = self.openslide_obj
 
-        if self.parallel:
+        if self.parallel > 1:
             self.openslide_obj = None  # Deactivate the main process object so it doesn't get sent to subprocesses
 
         self.rescale = self.objective_power / self.cws_objective_value
@@ -104,8 +105,9 @@ class CWSGENERATOR:
         self.xTiles = int(math.ceil((self.slide_w - self.cws_w) / self.cws_w + 1))
         self.nTiles = self.yTiles * self.xTiles
 
-        if self.parallel:
-            with multiprocessing.Pool(processes=max(1, multiprocessing.cpu_count() - 1), initializer=initialise_par,
+        if self.parallel > 1:
+            with multiprocessing.Pool(processes=min(self.parallel, multiprocessing.cpu_count() - 1),
+                                      initializer=initialise_par,
                                       initargs=(os.path.join(self.input_dir, self.file_name),)) as pool:
                 pool.map(self.write_tile, range(self.nTiles))
 
@@ -120,7 +122,7 @@ class CWSGENERATOR:
             delattr(self, 'text_output')
 
     def write_tile(self, i):
-        if self.parallel:
+        if self.parallel > 1:
             self.openslide_obj = openslide_obj
 
         h = i // self.xTiles
@@ -144,7 +146,7 @@ class CWSGENERATOR:
 
         im = self.openslide_obj.read_region([start_w, start_h], 0, [end_w - start_w, end_h - start_h])
         format_str = 'Da%d:  start_w:%d, end_w:%d, start_h:%d, end_h:%d, width:%d, height:%d'
-        if not self.parallel:
+        if self.parallel <= 1:
             self.text_output.write((format_str + '\n') % (
                 i, start_w, end_w, start_h, end_h, end_w - start_w, end_h - start_h))
         # print(format_str % (
@@ -152,10 +154,13 @@ class CWSGENERATOR:
         temp = np.array(im)
         temp = temp[:, :, 0:3]
         im = Image.fromarray(temp)
-        if self.rescale != 1:
+        if self.rescale != 1 and out_h > 0 and out_w > 0:
             im = im.resize(size=[out_w, out_h],
                            resample=Image.BICUBIC)
-        im.save(os.path.join(self.output_dir, 'Da' + str(i) + '.jpg'), format='JPEG')
+        try:
+            im.save(os.path.join(self.output_dir, 'Da' + str(i) + '.jpg'), format='JPEG')
+        except ValueError as err:
+            logger.error(err)
 
     def slide_thumbnail(self):
         openslide_obj = self.openslide_obj

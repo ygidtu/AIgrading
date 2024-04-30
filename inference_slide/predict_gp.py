@@ -240,14 +240,13 @@ def generate_gp(datapath, save_dir, patch_size=768, patch_stride=192, nClass=7, 
             testData_c = patch_obj.extract_patches_img_label(testImgc)
             testData_c = testData_c.astype(np.float32)
             testData_c = testData_c / 255.0
-            outData = model.predict(testData_c)
+            outData = model.predict(testData_c, verbose=0)
             merge_output = patch_obj.merge_patches(outData)
             merge_output = merge_output.argmax(axis=2)
             seg_mask = get_colored_segmentation_image(merge_output, nClass, colors=class_colors)
             cv2.imwrite(os.path.join(save_dir_file, img_name + '.png'), seg_mask)
 
         else:
-
             ('Already Processed %s\n' % os.path.join(save_dir_file, img_name + '.png'))
 
 

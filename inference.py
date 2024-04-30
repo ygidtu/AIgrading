@@ -9,14 +9,29 @@ from multiprocessing import Pool
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 import numpy as np
+import tensorflow as tf
 
+from loguru import logger
 from PIL import Image
+# from tensorflow.python.client import device_lib
 from tqdm import tqdm
 
+logger.remove()
+logger.add(lambda msg: tqdm.write(msg, end=""), colorize=True)
+
+gpus = tf.config.list_physical_devices('GPU')
+if gpus:
+    # Restrict TensorFlow to only use the first GPU
+    try:
+        tf.config.set_visible_devices(gpus[0], 'GPU')
+        logical_gpus = tf.config.list_logical_devices('GPU')
+        logger.info(f"{len(gpus)} Physical GPUs, {len(logical_gpus)} Logical GPU")
+    except RuntimeError as e:
+        # Visible devices must be set before GPUs have been initialized
+        print(e)
 
 from generating_tile.save_cws import single_file_run
 from inference_slide.predict_gp import generate_gp
-
 
 parser = ArgumentParser()
 parser.add_argument('-d', '--data_dir', dest='data_dir', help='path to raw image data')
@@ -35,13 +50,6 @@ def find_files(path, pattern):
             if file.endswith(pattern):
                 fs.append(os.path.join(parent, file))
     return fs
-
-
-def call(args):
-    try:
-        single_file_run(**args)
-    except ZeroDivisionError:
-        pass
 
 
 def load_image(args):
@@ -111,8 +119,6 @@ def inference_slide(args):
     # ss1_final(**args["final"])
 
 
-
-
 def main():
     try:
         args = parser.parse_args(sys.argv[1:])
@@ -121,6 +127,7 @@ def main():
         parser.print_help()
         exit(1)
 
+    # print(device_lib.list_local_devices())
     output_dir = args.save_dir
     tiling_dir = os.path.join(output_dir, "cws_tiling")
     os.makedirs(tiling_dir, exist_ok=True)
@@ -133,42 +140,38 @@ def main():
 
     wsi = sorted(find_files(args.data_dir, args.file_name_pattern))
 
-    cmds = []
-    for wsi_i in wsi:
+    for wsi_i in tqdm(wsi, desc="Generating tiles..."):
 
         if glob(os.path.join(tiling_dir, os.path.basename(wsi_i), "Ss1.jpg")):
             continue
 
-        cmds.append({
-            'output_dir': tiling_dir,
-            'input_dir': os.path.dirname(wsi_i),
-            'file_name': os.path.basename(wsi_i),
-            'wsi_input': wsi_i,
-            'tif_obj': 40,
-            'cws_objective_value': 20,
-            'in_mpp': None,
-            'out_mpp': args.output_mpp,
-            'out_mpp_target_objective': 40,
-            'parallel': False,
-            "generated_dir": generated_gp
-        })
-
-    with Pool(args.n_jobs) as p:
-        list(tqdm(p.imap(call, cmds), total=len(cmds)))
+        try:
+            single_file_run(**{
+                'output_dir': tiling_dir,
+                'input_dir': os.path.dirname(wsi_i),
+                'file_name': os.path.basename(wsi_i),
+                'wsi_input': wsi_i,
+                'tif_obj': 40,
+                'cws_objective_value': 20,
+                'in_mpp': None,
+                'out_mpp': args.output_mpp,
+                'out_mpp_target_objective': 40,
+                'parallel': args.n_jobs,
+                "generated_dir": generated_gp
+            })
+        except ZeroDivisionError as err:
+            logger.error(err)
+            continue
 
     cws_files = sorted(glob(os.path.join(tiling_dir, "*")))
-    cmds = []
-    for cws_file in cws_files:
-        cmds.append({
+    for cws_file in tqdm(cws_files, desc="Predict slides..."):
+        inference_slide({
             "datapath": cws_file, "save_dir": generated_gp,
             "color_norm": args.color_norm, "patch_size": 768,
             "patch_stride": 192, "nClass": 7, "tiling_dir": tiling_dir
         })
 
-    with Pool(args.n_jobs) as p:
-        list(tqdm(p.imap_unordered(inference_slide, cmds), total=len(cmds)))
-
-    for wsi_i in tqdm(wsi):
+    for wsi_i in tqdm(wsi, desc="Merging images..."):
         merge_images(
             os.path.join(tiling_dir, os.path.basename(wsi_i), "Output.txt"),
             os.path.join(generated_gp, os.path.basename(wsi_i)),

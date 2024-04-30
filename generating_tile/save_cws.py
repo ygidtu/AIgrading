@@ -17,7 +17,6 @@ def single_file_run(
         out_mpp=None, out_mpp_target_objective=40,
         parallel=False, **kwargs
 ):
-    # print(file_name, flush=True)
     _, file_type = os.path.splitext(file_name)
 
     if file_type in ['.svs', '.ndpi', '.mrxs', '.kfb']:
